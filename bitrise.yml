@@ -1,0 +1,147 @@
+format_version: 1.3.1
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+
+app:
+  envs:
+  - CORDOVA_PROJECT_NAME: HelloCordovaOnBitrise
+  - CORDOVA_PROJECT_DIR: ./
+  - CORDOVA_BUILD_JSON_FILE: ./build.json
+
+workflows:
+  # -----
+  # Common workflows
+  _ci_finish:
+    steps:
+    - deploy-to-bitrise-io:
+        run_if: '{{getenv "BITRISE_BUILD_URL" | ne ""}}'
+
+  _ci_setup:
+    steps:
+    - activate-ssh-key:
+        run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+    - git-clone: 
+    - npm:
+        title: Install cordova
+        run_if: .IsCI
+        inputs:
+        - command: install -g cordova
+
+  build:
+    steps:
+    - certificate-and-profile-installer: 
+    - change-workdir:
+        title: Change workdir to cordova project dir
+        inputs:
+        - path: $CORDOVA_PROJECT_DIR
+        - is_create_path: "false"
+    - script:
+        title: cordova prepare
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            cordova prepare
+    - script:
+        title: cordova build
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            cordova build --release --device --buildConfig $CORDOVA_BUILD_JSON_FILE
+
+            cp ./platforms/ios/build/device/${CORDOVA_PROJECT_NAME}.ipa "${BITRISE_DEPLOY_DIR}/${CORDOVA_PROJECT_NAME}.ipa"
+            cp -rf ./platforms/ios/build/device/${CORDOVA_PROJECT_NAME}.app "${BITRISE_DEPLOY_DIR}/${CORDOVA_PROJECT_NAME}.app"
+            cp -rf ./platforms/ios/build/device/${CORDOVA_PROJECT_NAME}.app.dsym "${BITRISE_DEPLOY_DIR}/${CORDOVA_PROJECT_NAME}.app.dsym"
+
+            cp ./platforms/android/build/outputs/apk/android-release-unsigned.apk "${BITRISE_DEPLOY_DIR}/android-release-unsigned.apk"
+
+  ci:
+    before_run:
+    - _ci_setup
+    after_run:
+    - build
+    - _ci_finish
+
+  # -----
+  # iOS Workflows
+  build-ios:
+    steps:
+    - certificate-and-profile-installer: 
+    - change-workdir:
+        title: Change workdir to cordova project dir
+        inputs:
+        - path: $CORDOVA_PROJECT_DIR
+        - is_create_path: "false"
+    - script:
+        title: cordova prepare
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            cordova prepare ios
+    - script:
+        title: cordova build
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            cordova build ios --release --device --buildConfig $CORDOVA_BUILD_JSON_FILE
+
+            cp ./platforms/ios/build/device/${CORDOVA_PROJECT_NAME}.ipa "${BITRISE_DEPLOY_DIR}/${CORDOVA_PROJECT_NAME}.ipa"
+            cp -rf ./platforms/ios/build/device/${CORDOVA_PROJECT_NAME}.app "${BITRISE_DEPLOY_DIR}/${CORDOVA_PROJECT_NAME}.app"
+            cp -rf ./platforms/ios/build/device/${CORDOVA_PROJECT_NAME}.app.dsym "${BITRISE_DEPLOY_DIR}/${CORDOVA_PROJECT_NAME}.app.dsym"
+
+  ci-ios:
+    before_run:
+    - _ci_setup
+    after_run:
+    - build-ios
+    - _ci_finish
+
+  # -----
+  # Android Workflows
+  build-android:
+    steps:
+    - script:
+        title: Install android sdk
+        run_if: .IsCI
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            echo y | android update sdk --no-ui --all --filter android-25
+    - change-workdir:
+        title: Change workdir to cordova project dir
+        inputs:
+        - path: $CORDOVA_PROJECT_DIR
+        - is_create_path: "false"
+    - script:
+        title: cordova prepare
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            cordova prepare android
+    - script:
+        title: cordova build
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            cordova build android --release --device
+
+            cp ./platforms/android/build/outputs/apk/android-release-unsigned.apk "${BITRISE_DEPLOY_DIR}/android-release-unsigned.apk"
+
+  ci-android:
+    before_run:
+    - _ci_setup
+    after_run:
+    - build-android
+    - _ci_finish
