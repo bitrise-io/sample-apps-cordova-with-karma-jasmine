@@ -5,6 +5,7 @@ app:
   envs:
   - CORDOVA_PROJECT_NAME: HelloCordovaOnBitrise
   - CORDOVA_PROJECT_DIR: .
+  - TEAM_ID: 72SA8V3WYL
 
 workflows:
   # -----
@@ -30,9 +31,6 @@ workflows:
     # ios config
     - BITRISE_PROJECT_PATH: $CORDOVA_PROJECT_DIR/platforms/ios/$CORDOVA_PROJECT_NAME.xcworkspace
     - BITRISE_SCHEME: $CORDOVA_PROJECT_NAME
-    - TEAM_ID: 72SA8V3WYL
-    - CODE_SIGN_IDENTITY: "iPhone Developer: Bitrise Bot (VV2J4SV8V4)"
-    - PROVISIONING_PROFILE: "548cd560-c511-4540-8b6b-cbec4a22f49d"
     # android config
     - GRADLE_BUILD_FILE_PATH: $CORDOVA_PROJECT_DIR/platforms/android/build.gradle
     - GRADLEW_PATH: $CORDOVA_PROJECT_DIR/platforms/android/gradlew
@@ -54,8 +52,6 @@ workflows:
     - xcode-archive:
         inputs:
         - force_team_id: $TEAM_ID
-        - force_code_sign_identity: $CODE_SIGN_IDENTITY
-        - force_provisioning_profile: $PROVISIONING_PROFILE
     - gradle-runner:
 
   ci:
@@ -71,9 +67,6 @@ workflows:
     envs:
     - BITRISE_PROJECT_PATH: $CORDOVA_PROJECT_DIR/platforms/ios/$CORDOVA_PROJECT_NAME.xcworkspace
     - BITRISE_SCHEME: $CORDOVA_PROJECT_NAME
-    - TEAM_ID: 72SA8V3WYL
-    - CODE_SIGN_IDENTITY: "iPhone Developer: Bitrise Bot (VV2J4SV8V4)"
-    - PROVISIONING_PROFILE: "548cd560-c511-4540-8b6b-cbec4a22f49d"
     steps:
     - certificate-and-profile-installer: 
     - change-workdir:
@@ -92,8 +85,6 @@ workflows:
     - xcode-archive:
         inputs:
         - force_team_id: $TEAM_ID
-        - force_code_sign_identity: $CODE_SIGN_IDENTITY
-        - force_provisioning_profile: $PROVISIONING_PROFILE
 
   ci-ios:
     before_run:
