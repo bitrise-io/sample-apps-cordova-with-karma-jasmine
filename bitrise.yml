@@ -4,8 +4,7 @@ default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 app:
   envs:
   - CORDOVA_PROJECT_NAME: HelloCordovaOnBitrise
-  - CORDOVA_PROJECT_DIR: ./
-  - CORDOVA_BUILD_JSON_FILE: ./build.json
+  - CORDOVA_PROJECT_DIR: .
 
 workflows:
   # -----
@@ -27,6 +26,16 @@ workflows:
         - command: install -g cordova
 
   build:
+    envs:
+    # ios config
+    - BITRISE_PROJECT_PATH: $CORDOVA_PROJECT_DIR/platforms/ios/$CORDOVA_PROJECT_NAME.xcworkspace
+    - BITRISE_SCHEME: $CORDOVA_PROJECT_NAME
+    - TEAM_ID: 72SA8V3WYL
+    - CODE_SIGN_IDENTITY: "iPhone Developer: Bitrise Bot (VV2J4SV8V4)"
+    - PROVISIONING_PROFILE: "548cd560-c511-4540-8b6b-cbec4a22f49d"
+    # android config
+    - GRADLE_BUILD_FILE_PATH: $CORDOVA_PROJECT_DIR/platforms/android/build.gradle
+    - GRADLEW_PATH: $CORDOVA_PROJECT_DIR/platforms/android/gradlew
     steps:
     - certificate-and-profile-installer: 
     - change-workdir:
@@ -42,20 +51,12 @@ workflows:
             set -ex
 
             cordova prepare
-    - script:
-        title: cordova build
+    - xcode-archive:
         inputs:
-        - content: |-
-            #!/bin/bash
-            set -ex
-
-            cordova build --release --device --buildConfig $CORDOVA_BUILD_JSON_FILE
-
-            cp ./platforms/ios/build/device/${CORDOVA_PROJECT_NAME}.ipa "${BITRISE_DEPLOY_DIR}/${CORDOVA_PROJECT_NAME}.ipa"
-            cp -rf ./platforms/ios/build/device/${CORDOVA_PROJECT_NAME}.app "${BITRISE_DEPLOY_DIR}/${CORDOVA_PROJECT_NAME}.app"
-            cp -rf ./platforms/ios/build/device/${CORDOVA_PROJECT_NAME}.app.dsym "${BITRISE_DEPLOY_DIR}/${CORDOVA_PROJECT_NAME}.app.dsym"
-
-            cp ./platforms/android/build/outputs/apk/android-release-unsigned.apk "${BITRISE_DEPLOY_DIR}/android-release-unsigned.apk"
+        - force_team_id: $TEAM_ID
+        - force_code_sign_identity: $CODE_SIGN_IDENTITY
+        - force_provisioning_profile: $PROVISIONING_PROFILE
+    - gradle-runner:
 
   ci:
     before_run:
@@ -67,6 +68,12 @@ workflows:
   # -----
   # iOS Workflows
   build-ios:
+    envs:
+    - BITRISE_PROJECT_PATH: $CORDOVA_PROJECT_DIR/platforms/ios/$CORDOVA_PROJECT_NAME.xcworkspace
+    - BITRISE_SCHEME: $CORDOVA_PROJECT_NAME
+    - TEAM_ID: 72SA8V3WYL
+    - CODE_SIGN_IDENTITY: "iPhone Developer: Bitrise Bot (VV2J4SV8V4)"
+    - PROVISIONING_PROFILE: "548cd560-c511-4540-8b6b-cbec4a22f49d"
     steps:
     - certificate-and-profile-installer: 
     - change-workdir:
@@ -82,18 +89,11 @@ workflows:
             set -ex
 
             cordova prepare ios
-    - script:
-        title: cordova build
+    - xcode-archive:
         inputs:
-        - content: |-
-            #!/bin/bash
-            set -ex
-
-            cordova build ios --release --device --buildConfig $CORDOVA_BUILD_JSON_FILE
-
-            cp ./platforms/ios/build/device/${CORDOVA_PROJECT_NAME}.ipa "${BITRISE_DEPLOY_DIR}/${CORDOVA_PROJECT_NAME}.ipa"
-            cp -rf ./platforms/ios/build/device/${CORDOVA_PROJECT_NAME}.app "${BITRISE_DEPLOY_DIR}/${CORDOVA_PROJECT_NAME}.app"
-            cp -rf ./platforms/ios/build/device/${CORDOVA_PROJECT_NAME}.app.dsym "${BITRISE_DEPLOY_DIR}/${CORDOVA_PROJECT_NAME}.app.dsym"
+        - force_team_id: $TEAM_ID
+        - force_code_sign_identity: $CODE_SIGN_IDENTITY
+        - force_provisioning_profile: $PROVISIONING_PROFILE
 
   ci-ios:
     before_run:
@@ -105,6 +105,9 @@ workflows:
   # -----
   # Android Workflows
   build-android:
+    envs:
+    - GRADLE_BUILD_FILE_PATH: $CORDOVA_PROJECT_DIR/platforms/android/build.gradle
+    - GRADLEW_PATH: $CORDOVA_PROJECT_DIR/platforms/android/gradlew
     steps:
     - script:
         title: Install android sdk
@@ -128,16 +131,7 @@ workflows:
             set -ex
 
             cordova prepare android
-    - script:
-        title: cordova build
-        inputs:
-        - content: |-
-            #!/bin/bash
-            set -ex
-
-            cordova build android --release --device
-
-            cp ./platforms/android/build/outputs/apk/android-release-unsigned.apk "${BITRISE_DEPLOY_DIR}/android-release-unsigned.apk"
+    - gradle-runner:
 
   ci-android:
     before_run:
