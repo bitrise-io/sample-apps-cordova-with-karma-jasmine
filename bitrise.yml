@@ -3,7 +3,7 @@ default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 
 app:
   envs:
-  - CORDOVA_PROJECT_NAME: HelloCordovaOnBitrise
+  - CORDOVA_PROJECT_NAME: CordovaOnBitrise
   - CORDOVA_PROJECT_DIR: .
   - TEAM_ID: 72SA8V3WYL
 
