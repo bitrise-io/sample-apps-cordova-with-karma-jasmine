@@ -35,6 +35,13 @@ workflows:
         inputs:
         - path: "$CORDOVA_PROJECT_DIR"
         - is_create_path: 'false'
+
+  build-ios:
+    envs:
+    - BITRISE_PROJECT_PATH: "$CORDOVA_PROJECT_DIR/platforms/ios/$CORDOVA_PROJECT_NAME.xcworkspace"
+    - BITRISE_SCHEME: "$CORDOVA_PROJECT_NAME"
+    steps:
+    - certificate-and-profile-installer: 
     - script:
         title: cordova prepare
         inputs:
@@ -45,13 +52,6 @@ workflows:
             if [[ ! -d "$CORDOVA_PROJECT_DIR/platforms" ]] ; then
                 cordova prepare
             fi
-
-  build-ios:
-    envs:
-    - BITRISE_PROJECT_PATH: "$CORDOVA_PROJECT_DIR/platforms/ios/$CORDOVA_PROJECT_NAME.xcworkspace"
-    - BITRISE_SCHEME: "$CORDOVA_PROJECT_NAME"
-    steps:
-    - certificate-and-profile-installer: 
     - xcode-archive:
         inputs:
         - force_team_id: "$TEAM_ID"
@@ -59,32 +59,34 @@ workflows:
 
   build-android:
     envs:
-    - GRADLE_URL: https://services.gradle.org/distributions/gradle-3.4.1-bin.zip
+    - ANDROID_TOOLS_URL: https://dl.google.com/android/repository/tools_r25.2.3-macosx.zip
     - GRADLE_BUILD_FILE_PATH: "$CORDOVA_PROJECT_DIR/platforms/android/build.gradle"
     - GRADLEW_PATH: "$CORDOVA_PROJECT_DIR/platforms/android/gradlew"
-    steps:
+    steps:    
     - script:
-        title: Install android sdk
-        run_if: ".IsCI"
-        inputs:
-        - content: |-
-            #!/bin/bash
-            set -ex
-
-            echo y | android update sdk --no-ui --all --filter android-25
-    - script:
-        title: Install gradle wrapper
+        title: Install Android Tools 25.2.3
         inputs:
         - content: |-
             #!/bin/bash
             set -ex
 
             tmp_dir=$(mktemp -d -t XXX)
-            wget -P $tmp_dir $GRADLE_URL
+            wget -P $tmp_dir $ANDROID_TOOLS_URL
             cd $tmp_dir
-            unzip gradle-3.4.1-bin.zip
-            cd $CORDOVA_PROJECT_DIR/platforms/android
-            "$tmp_dir/gradle-3.4.1/bin/gradle" wrapper
+            unzip tools_r25.2.3-macosx.zip
+            rm -rf $ANDROID_HOME/tools
+            mv tools $ANDROID_HOME
+    - script:
+        title: cordova prepare
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            if [[ ! -d "$CORDOVA_PROJECT_DIR/platforms" ]] ; then
+                cordova prepare
+            fi
+    - install-missing-android-tools:
     - gradle-runner: 
 
   ci:
