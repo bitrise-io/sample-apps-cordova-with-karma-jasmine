@@ -1,15 +1,15 @@
+---
 format_version: 1.3.1
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 
 app:
   envs:
   - CORDOVA_PROJECT_NAME: CordovaOnBitrise
-  - CORDOVA_PROJECT_DIR: .
+  - CORDOVA_PROJECT_DIR: "$BITRISE_SOURCE_DIR"
   - TEAM_ID: 72SA8V3WYL
+  - CODE_SIGN_IDENTITY: 'iPhone Developer'
 
 workflows:
-  # -----
-  # Common workflows
   _ci_finish:
     steps:
     - deploy-to-bitrise-io:
@@ -17,30 +17,24 @@ workflows:
 
   _ci_setup:
     steps:
+    - script:
+        inputs:
+        - content: |-
+            rm -rf ./platforms
+            rm -rf ./plugins
     - activate-ssh-key:
         run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
     - git-clone: 
     - npm:
         title: Install cordova
-        run_if: .IsCI
+        run_if: ".IsCI"
         inputs:
         - command: install -g cordova
-
-  build:
-    envs:
-    # ios config
-    - BITRISE_PROJECT_PATH: $CORDOVA_PROJECT_DIR/platforms/ios/$CORDOVA_PROJECT_NAME.xcworkspace
-    - BITRISE_SCHEME: $CORDOVA_PROJECT_NAME
-    # android config
-    - GRADLE_BUILD_FILE_PATH: $CORDOVA_PROJECT_DIR/platforms/android/build.gradle
-    - GRADLEW_PATH: $CORDOVA_PROJECT_DIR/platforms/android/gradlew
-    steps:
-    - certificate-and-profile-installer: 
     - change-workdir:
         title: Change workdir to cordova project dir
         inputs:
-        - path: $CORDOVA_PROJECT_DIR
-        - is_create_path: "false"
+        - path: "$CORDOVA_PROJECT_DIR"
+        - is_create_path: 'false'
     - script:
         title: cordova prepare
         inputs:
@@ -48,43 +42,58 @@ workflows:
             #!/bin/bash
             set -ex
 
-            cordova prepare
+            if [[ ! -d "$CORDOVA_PROJECT_DIR/platforms" ]] ; then
+                cordova prepare
+            fi
+
+  build-ios:
+    envs:
+    - BITRISE_PROJECT_PATH: "$CORDOVA_PROJECT_DIR/platforms/ios/$CORDOVA_PROJECT_NAME.xcworkspace"
+    - BITRISE_SCHEME: "$CORDOVA_PROJECT_NAME"
+    steps:
+    - certificate-and-profile-installer: 
     - xcode-archive:
         inputs:
-        - force_team_id: $TEAM_ID
-    - gradle-runner:
+        - force_team_id: "$TEAM_ID"
+        - force_code_sign_identity: "$CODE_SIGN_IDENTITY"
+
+  build-android:
+    envs:
+    - GRADLE_URL: https://services.gradle.org/distributions/gradle-3.4.1-bin.zip
+    - GRADLE_BUILD_FILE_PATH: "$CORDOVA_PROJECT_DIR/platforms/android/build.gradle"
+    - GRADLEW_PATH: "$CORDOVA_PROJECT_DIR/platforms/android/gradlew"
+    steps:
+    - script:
+        title: Install android sdk
+        run_if: ".IsCI"
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            echo y | android update sdk --no-ui --all --filter android-25
+    - script:
+        title: Install gradle wrapper
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            tmp_dir=$(mktemp -d -t XXX)
+            wget -P $tmp_dir $GRADLE_URL
+            cd $tmp_dir
+            unzip gradle-3.4.1-bin.zip
+            cd $CORDOVA_PROJECT_DIR/platforms/android
+            "$tmp_dir/gradle-3.4.1/bin/gradle" wrapper
+    - gradle-runner: 
 
   ci:
     before_run:
     - _ci_setup
     after_run:
-    - build
+    - build-ios
+    - build-android
     - _ci_finish
-
-  # -----
-  # iOS Workflows
-  build-ios:
-    envs:
-    - BITRISE_PROJECT_PATH: $CORDOVA_PROJECT_DIR/platforms/ios/$CORDOVA_PROJECT_NAME.xcworkspace
-    - BITRISE_SCHEME: $CORDOVA_PROJECT_NAME
-    steps:
-    - certificate-and-profile-installer: 
-    - change-workdir:
-        title: Change workdir to cordova project dir
-        inputs:
-        - path: $CORDOVA_PROJECT_DIR
-        - is_create_path: "false"
-    - script:
-        title: cordova prepare
-        inputs:
-        - content: |-
-            #!/bin/bash
-            set -ex
-
-            cordova prepare ios
-    - xcode-archive:
-        inputs:
-        - force_team_id: $TEAM_ID
 
   ci-ios:
     before_run:
@@ -92,37 +101,6 @@ workflows:
     after_run:
     - build-ios
     - _ci_finish
-
-  # -----
-  # Android Workflows
-  build-android:
-    envs:
-    - GRADLE_BUILD_FILE_PATH: $CORDOVA_PROJECT_DIR/platforms/android/build.gradle
-    - GRADLEW_PATH: $CORDOVA_PROJECT_DIR/platforms/android/gradlew
-    steps:
-    - script:
-        title: Install android sdk
-        run_if: .IsCI
-        inputs:
-        - content: |-
-            #!/bin/bash
-            set -ex
-
-            echo y | android update sdk --no-ui --all --filter android-25
-    - change-workdir:
-        title: Change workdir to cordova project dir
-        inputs:
-        - path: $CORDOVA_PROJECT_DIR
-        - is_create_path: "false"
-    - script:
-        title: cordova prepare
-        inputs:
-        - content: |-
-            #!/bin/bash
-            set -ex
-
-            cordova prepare android
-    - gradle-runner:
 
   ci-android:
     before_run:
