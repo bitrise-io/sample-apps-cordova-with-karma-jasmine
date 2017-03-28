@@ -59,23 +59,10 @@ workflows:
 
   build-android:
     envs:
-    - ANDROID_TOOLS_URL: https://dl.google.com/android/repository/tools_r25.2.3-macosx.zip
+    - GRADLE_BIN_URL: https://services.gradle.org/distributions/gradle-3.4.1-bin.zip
     - GRADLE_BUILD_FILE_PATH: "$CORDOVA_PROJECT_DIR/platforms/android/build.gradle"
     - GRADLEW_PATH: "$CORDOVA_PROJECT_DIR/platforms/android/gradlew"
-    steps:    
-    - script:
-        title: Install Android Tools 25.2.3
-        inputs:
-        - content: |-
-            #!/bin/bash
-            set -ex
-
-            tmp_dir=$(mktemp -d -t XXX)
-            wget -P $tmp_dir $ANDROID_TOOLS_URL
-            cd $tmp_dir
-            unzip tools_r25.2.3-macosx.zip
-            rm -rf $ANDROID_HOME/tools
-            mv tools $ANDROID_HOME
+    steps:
     - script:
         title: cordova prepare
         inputs:
@@ -86,6 +73,20 @@ workflows:
             if [[ ! -d "$CORDOVA_PROJECT_DIR/platforms" ]] ; then
                 cordova prepare
             fi
+    - script:
+        title: Install Android Tools 25.2.3
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            tmp_dir=$(mktemp -d -t XXX)
+            wget -P $tmp_dir $GRADLE_BIN_URL
+            cd $tmp_dir
+            unzip gradle-3.4.1-bin.zip
+            gradle_pth="$tmp_dir/gradle-3.4.1/bin/gradle"
+            cd "$CORDOVA_PROJECT_DIR/platforms/android"
+            $gradle_pth wrapper
     - install-missing-android-tools:
     - gradle-runner: 
 
