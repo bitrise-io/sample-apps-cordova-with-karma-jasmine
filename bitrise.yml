@@ -2,6 +2,13 @@
 format_version: 1.3.1
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 
+trigger_map:
+- pull_request_source_branch: "*"
+  pull_request_target_branch: "*"
+  workflow: ci
+- push_branch: "*"
+  workflow: ci
+
 app:
   envs:
   - CORDOVA_PROJECT_NAME: CordovaOnBitrise
@@ -10,12 +17,12 @@ app:
   - CODE_SIGN_IDENTITY: 'iPhone Developer'
 
 workflows:
-  _ci_finish:
+  _finish:
     steps:
     - deploy-to-bitrise-io:
         run_if: '{{getenv "BITRISE_BUILD_URL" | ne ""}}'
 
-  _ci_setup:
+  _setup:
     steps:
     - script:
         inputs:
@@ -35,13 +42,6 @@ workflows:
         inputs:
         - path: "$CORDOVA_PROJECT_DIR"
         - is_create_path: 'false'
-
-  build-ios:
-    envs:
-    - BITRISE_PROJECT_PATH: "$CORDOVA_PROJECT_DIR/platforms/ios/$CORDOVA_PROJECT_NAME.xcworkspace"
-    - BITRISE_SCHEME: "$CORDOVA_PROJECT_NAME"
-    steps:
-    - certificate-and-profile-installer: 
     - script:
         title: cordova prepare
         inputs:
@@ -52,6 +52,13 @@ workflows:
             if [[ ! -d "$CORDOVA_PROJECT_DIR/platforms" ]] ; then
                 cordova prepare
             fi
+
+  build-ios:
+    envs:
+    - BITRISE_PROJECT_PATH: "$CORDOVA_PROJECT_DIR/platforms/ios/$CORDOVA_PROJECT_NAME.xcworkspace"
+    - BITRISE_SCHEME: "$CORDOVA_PROJECT_NAME"
+    steps:
+    - certificate-and-profile-installer: 
     - xcode-archive:
         inputs:
         - force_team_id: "$TEAM_ID"
@@ -64,21 +71,15 @@ workflows:
     - GRADLEW_PATH: "$CORDOVA_PROJECT_DIR/platforms/android/gradlew"
     steps:
     - script:
-        title: cordova prepare
+        title: Install Gradle wrapper
         inputs:
         - content: |-
             #!/bin/bash
             set -ex
 
-            if [[ ! -d "$CORDOVA_PROJECT_DIR/platforms" ]] ; then
-                cordova prepare
+            if [[ -e $GRADLEW_PATH ]] ; then
+                exit 0
             fi
-    - script:
-        title: Install Android Tools 25.2.3
-        inputs:
-        - content: |-
-            #!/bin/bash
-            set -ex
 
             if [[ ! -e "$ANDROID_HOME/licenses/android-sdk-license" ]] ; then
                 mkdir "$ANDROID_HOME/licenses" || true
@@ -98,22 +99,22 @@ workflows:
 
   ci:
     before_run:
-    - _ci_setup
+    - _setup
     after_run:
     - build-ios
     - build-android
-    - _ci_finish
+    - _finish
 
   ci-ios:
     before_run:
-    - _ci_setup
+    - _setup
     after_run:
     - build-ios
-    - _ci_finish
+    - _finish
 
   ci-android:
     before_run:
-    - _ci_setup
+    - _setup
     after_run:
     - build-android
-    - _ci_finish
+    - _finish
