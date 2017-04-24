@@ -1,0 +1,120 @@
+---
+format_version: 1.3.1
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+
+trigger_map:
+- pull_request_source_branch: "*"
+  pull_request_target_branch: "*"
+  workflow: ci
+- push_branch: "*"
+  workflow: ci
+
+app:
+  envs:
+  - CORDOVA_PROJECT_NAME: CordovaOnBitrise
+  - CORDOVA_PROJECT_DIR: "$BITRISE_SOURCE_DIR"
+  - TEAM_ID: 72SA8V3WYL
+  - CODE_SIGN_IDENTITY: 'iPhone Developer'
+
+workflows:
+  _finish:
+    steps:
+    - deploy-to-bitrise-io:
+        run_if: '{{getenv "BITRISE_BUILD_URL" | ne ""}}'
+
+  _setup:
+    steps:
+    - script:
+        inputs:
+        - content: |-
+            rm -rf ./platforms
+            rm -rf ./plugins
+    - activate-ssh-key:
+        run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
+    - git-clone: 
+    - npm:
+        title: Install cordova
+        run_if: ".IsCI"
+        inputs:
+        - command: install -g cordova
+    - change-workdir:
+        title: Change workdir to cordova project dir
+        inputs:
+        - path: "$CORDOVA_PROJECT_DIR"
+        - is_create_path: 'false'
+    - script:
+        title: cordova prepare
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            if [[ ! -d "$CORDOVA_PROJECT_DIR/platforms" ]] ; then
+                cordova prepare
+            fi
+
+  build-ios:
+    envs:
+    - BITRISE_PROJECT_PATH: "$CORDOVA_PROJECT_DIR/platforms/ios/$CORDOVA_PROJECT_NAME.xcworkspace"
+    - BITRISE_SCHEME: "$CORDOVA_PROJECT_NAME"
+    steps:
+    - certificate-and-profile-installer: 
+    - xcode-archive:
+        inputs:
+        - force_team_id: "$TEAM_ID"
+        - force_code_sign_identity: "$CODE_SIGN_IDENTITY"
+
+  build-android:
+    envs:
+    - GRADLE_BIN_URL: https://services.gradle.org/distributions/gradle-3.4.1-bin.zip
+    - GRADLE_BUILD_FILE_PATH: "$CORDOVA_PROJECT_DIR/platforms/android/build.gradle"
+    - GRADLEW_PATH: "$CORDOVA_PROJECT_DIR/platforms/android/gradlew"
+    steps:
+    - script:
+        title: Install Gradle wrapper
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+
+            if [[ -e $GRADLEW_PATH ]] ; then
+                exit 0
+            fi
+
+            if [[ ! -e "$ANDROID_HOME/licenses/android-sdk-license" ]] ; then
+                mkdir "$ANDROID_HOME/licenses" || true
+                echo -e "\n8933bad161af4178b1185d1a37fbf41ea5269c55" > "$ANDROID_HOME/licenses/android-sdk-license"
+                echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > "$ANDROID_HOME/licenses/android-sdk-preview-license"
+            fi
+
+            tmp_dir=$(mktemp -d -t XXX)
+            wget -P $tmp_dir $GRADLE_BIN_URL
+            cd $tmp_dir
+            unzip gradle-3.4.1-bin.zip
+            gradle_pth="$tmp_dir/gradle-3.4.1/bin/gradle"
+            cd "$CORDOVA_PROJECT_DIR/platforms/android"
+            $gradle_pth wrapper
+    - install-missing-android-tools:
+    - gradle-runner: 
+
+  ci:
+    before_run:
+    - _setup
+    after_run:
+    - build-ios
+    - build-android
+    - _finish
+
+  ci-ios:
+    before_run:
+    - _setup
+    after_run:
+    - build-ios
+    - _finish
+
+  ci-android:
+    before_run:
+    - _setup
+    after_run:
+    - build-android
+    - _finish
