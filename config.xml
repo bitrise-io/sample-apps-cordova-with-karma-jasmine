@@ -2,10 +2,8 @@
 <widget id="com.bitrise.cordovasample" version="0.9.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
     <name>CordovaOnBitrise</name>
     <description>A sample Apache Cordova application that builds on Bitrise.</description>
-
     <content src="index.html" />
     <access origin="*" />
-
     <plugin name="cordova-plugin-whitelist" spec="1" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
@@ -13,10 +11,6 @@
     <allow-intent href="sms:*" />
     <allow-intent href="mailto:*" />
     <allow-intent href="geo:*" />
-
-    <engine name="ios" spec="~4.3.1" />
-    <engine name="android" spec="~6.1.2" />
-
     <platform name="android">
         <allow-intent href="market:*" />
     </platform>
@@ -24,4 +18,6 @@
         <allow-intent href="itms:*" />
         <allow-intent href="itms-apps:*" />
     </platform>
+    <engine name="android" spec="~6.2.1" />
+    <engine name="ios" spec="~4.3.1" />
 </widget>
