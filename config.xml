@@ -4,7 +4,6 @@
     <description>A sample Apache Cordova application that builds on Bitrise.</description>
     <content src="index.html" />
     <access origin="*" />
-    <plugin name="cordova-plugin-whitelist" spec="1" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
     <allow-intent href="tel:*" />
@@ -18,5 +17,4 @@
         <allow-intent href="itms:*" />
         <allow-intent href="itms-apps:*" />
     </platform>
-    <engine name="android" spec="~14.0.0" />
 </widget>
