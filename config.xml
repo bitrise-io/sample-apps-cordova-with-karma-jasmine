@@ -4,7 +4,6 @@
     <description>A sample Apache Cordova application that builds on Bitrise.</description>
     <content src="index.html" />
     <access origin="*" />
-    <plugin name="cordova-plugin-whitelist" spec="1" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
     <allow-intent href="tel:*" />
